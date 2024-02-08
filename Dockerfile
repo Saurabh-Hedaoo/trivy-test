@@ -1,10 +1,12 @@
-from flask import Flask, jsonify
+FROM python:3.9
 
-app = Flask(__name__)
+WORKDIR /app
 
-@app.route('/')
-def hello_world():
-    return jsonify({'message': 'Hello from my Dockerized Flask app!'})
+COPY requirements.txt ./
+RUN pip install -r requirements.txt
 
-if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0')
+COPY . .
+
+EXPOSE 5000
+
+CMD ["python", "app.py"]
