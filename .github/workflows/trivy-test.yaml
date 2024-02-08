@@ -1,0 +1,43 @@
+name: Security Scan and Dependency Analysis
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-and-scan:
+    name: Build and Scan
+    runs-on: [selfhosted, Linux, X64, Docker]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Build Docker image
+        run: |
+          docker build . --tag npilookupscan
+        # Optionally, push the built image to a registry here
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'npilookupscan'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          vuln_type: 'linux' # Only scan for vulnerabilities in Linux packages
+          proxy: 'randomproxy.babelstreet.com:3128' # Use specified proxy for Trivy DB
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: 'trivy-results.sarif'
+          scan-type: 'container' # Specify the scan type as container
+          format: 'github' # Specify the output format
+
+      - name: Generate SPDX-JSON format SBOM
+        run: |
+          trivy image --format spdx-json --output SBOM.json npilookupscan
+
+      - name: Upload SBOM to GitHub Dependency Graph
+        uses: advanced-security/spdx-dependency-submission-action@v0.0.1
+        with:
+          filePath: 'SBOM.json'
+          githubToken: ${{ secrets.GITHUB_TOKEN }}
